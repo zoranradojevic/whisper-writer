@@ -8,9 +8,8 @@ model_options:
     base_url: https://api.openai.com/v1
     model: whisper-1
   common:
-    initial_prompt: Komande za Claude Code, Git, Supabase, Netlify, deploy, commit,
-      branch.
-    language: sr
+    initial_prompt: ''
+    language: en
     temperature: 0.0
   local:
     compute_type: int8

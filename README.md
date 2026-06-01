@@ -1,5 +1,109 @@
 # <img src="./assets/ww-logo.png" alt="WhisperWriter icon" width="25" height="25"> WhisperWriter
 
+> Fork of [savbell/whisper-writer](https://github.com/savbell/whisper-writer) with a Windows DLL-conflict fix, CPU thread fix, portable launcher, and a config template so new machines work out of the box. See "Quick Start" below.
+
+## Quick Start (Windows, CPU, any language)
+
+Step-by-step setup for a fresh Windows 10/11 machine. Takes ~10 minutes plus the one-time model download (~500 MB).
+
+### 1. Install prerequisites (once per machine)
+
+Open PowerShell and run each line. Skip the ones you already have.
+
+```powershell
+winget install --id Python.Python.3.11 -e
+winget install --id astral-sh.uv -e
+winget install --id Git.Git -e
+```
+
+Close and reopen PowerShell so `python`, `uv`, and `git` are on PATH. If `winget` isn't available, install manually:
+- Python 3.11: https://www.python.org/downloads/release/python-3119/
+- uv: https://github.com/astral-sh/uv
+- Git: https://git-scm.com/downloads
+
+### 2. Clone the repo
+
+```powershell
+git clone https://github.com/zoranradojevic/whisper-writer C:\whisper-writer
+cd C:\whisper-writer
+```
+
+You can use any folder instead of `C:\whisper-writer`. The launcher follows the folder.
+
+### 3. Install dependencies
+
+```powershell
+uv venv --python 3.11
+uv pip install -r requirements.txt
+```
+
+This downloads ~1.5 GB of Python packages into `.venv\`. Takes 2-3 minutes.
+
+### 4. First run — picks up default config and downloads the speech model
+
+```powershell
+.venv\Scripts\python.exe run.py
+```
+
+On first launch, `run.py` copies `src\config.yaml.example` to `src\config.yaml` (your editable settings). It then downloads the `small` Whisper model (~500 MB) and the Silero VAD model (~30 MB) from HuggingFace. This happens once; later starts use the cache.
+
+When you see `Local model created.` and a small **WhisperWriter** window appears, click **Start**. The window hides and the app starts listening for the activation key.
+
+### 5. Dictate
+
+1. Click into any text field (Notepad, browser, editor — wherever you want the text).
+2. **Press and hold F9**, speak, then **release F9**.
+3. Whisper transcribes and types the result where your cursor was.
+
+### 6. Change language, hotkey, or model
+
+Edit `src\config.yaml` (created on first run). Common changes:
+
+```yaml
+model_options:
+  common:
+    language: en      # en, sr, de, fr, es, it, ru, ... — any Whisper-supported code
+  local:
+    model: small      # tiny, base, small, medium, large-v3 (slower but more accurate)
+recording_options:
+  activation_key: f9  # f9, f10, pause, ctrl+alt+space, ...
+  recording_mode: hold_to_record  # or: press_to_toggle, continuous, voice_activity_detection
+```
+
+Restart the app after editing `config.yaml`.
+
+#### Picking a model by hardware
+
+| Model | Size | Speed (CPU only) | Quality | Recommended for |
+|---|---|---|---|---|
+| `tiny` | 75 MB | very fast | low | quick commands, English only |
+| `base` | 150 MB | fast | basic | short phrases |
+| `small` | 500 MB | moderate | good | **default** — best balance |
+| `medium` | 1.5 GB | slow on CPU | very good | if you have a fast CPU |
+| `large-v3` | 3 GB | very slow on CPU | best | only with NVIDIA GPU (`device: cuda`) |
+
+NVIDIA GPU owners: set `device: cuda` and `compute_type: float16` in `config.yaml`. You'll need cuBLAS and cuDNN — see the original README section below.
+
+### 7. Create a Desktop shortcut (optional but recommended)
+
+In File Explorer, navigate to your repo folder. Right-click `WhisperWriter.bat` → **Send to** → **Desktop (create shortcut)**. Right-click the new shortcut on the Desktop → **Properties** → **Change Icon** → browse to `assets\ww-logo.ico`. Now you can launch WhisperWriter with one click.
+
+### Stopping the app
+
+Right-click the tray icon (bottom-right of taskbar) → **Exit**, or close the console window, or press `Ctrl+C` in the console.
+
+### Troubleshooting
+
+- **App crashes on startup with "access violation"** on Windows: this fork already fixes that. If you still hit it, make sure `import ctranslate2` is the first line in `src\main.py`.
+- **`numpy._ARRAY_API not found` warning**: install `numpy<2` — `uv pip install "numpy<2"`.
+- **Hotkey doesn't trigger**: make sure you clicked **Start** in the main window — the window hides on Start, that's by design. The key listener doesn't activate before that.
+- **Hotkey opens a new tab in your terminal**: it's a conflict. Change `activation_key` in `config.yaml` to something else (`f10`, `pause`).
+- **Typing simulation doesn't work**: WhisperWriter must run at the same privilege level as the target app. Don't run one as Administrator and the other not.
+
+---
+
+## Original README (upstream)
+
 ![version](https://img.shields.io/badge/version-1.0.1-blue)
 
 <p align="center">

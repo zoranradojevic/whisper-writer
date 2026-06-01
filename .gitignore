@@ -130,4 +130,3 @@ dmypy.json
 
 # Configuration files
 config.yaml
-!src/config.yaml
