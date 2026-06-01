@@ -1,3 +1,8 @@
+# NOTE: ctranslate2 mora biti uvezen PRE PyQt5. Qt5Core.dll inače učita konfliktne
+# verzije deljenih C/OpenMP DLL-ova pa C++ konstruktor ctranslate2.models.Whisper(...)
+# pukne kao Windows access violation. Pre-loadovanje rezervise prave DLL-ove.
+import ctranslate2  # noqa: F401
+
 import os
 import sys
 import time
@@ -23,10 +28,11 @@ class WhisperWriterApp(QObject):
         Initialize the application, opening settings window if no configuration file is found.
         """
         super().__init__()
+        ConfigManager.initialize()
+        _mo = ConfigManager.get_config_section('model_options')
+        self._preloaded_model = create_local_model() if not _mo.get('use_api') else None
         self.app = QApplication(sys.argv)
         self.app.setWindowIcon(QIcon(os.path.join('assets', 'ww-logo.png')))
-
-        ConfigManager.initialize()
 
         self.settings_window = SettingsWindow()
         self.settings_window.settings_closed.connect(self.on_settings_closed)
@@ -50,7 +56,7 @@ class WhisperWriterApp(QObject):
 
         model_options = ConfigManager.get_config_section('model_options')
         model_path = model_options.get('local', {}).get('model_path')
-        self.local_model = create_local_model() if not model_options.get('use_api') else None
+        self.local_model = self._preloaded_model
 
         self.result_thread = None
 
@@ -186,3 +192,6 @@ class WhisperWriterApp(QObject):
 if __name__ == '__main__':
     app = WhisperWriterApp()
     app.run()
+
+
+
