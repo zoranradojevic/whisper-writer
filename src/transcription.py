@@ -1,5 +1,9 @@
-import io
 import os
+os.environ["TQDM_DISABLE"] = "1"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+from tqdm import tqdm as _tqdm
+_tqdm.monitor_interval = 0
+import io
 import numpy as np
 import soundfile as sf
 from faster_whisper import WhisperModel

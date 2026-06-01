@@ -1,0 +1,36 @@
+misc:
+  hide_status_window: false
+  noise_on_completion: false
+  print_to_terminal: true
+model_options:
+  api:
+    api_key: null
+    base_url: https://api.openai.com/v1
+    model: whisper-1
+  common:
+    initial_prompt: Komande za Claude Code, Git, Supabase, Netlify, deploy, commit,
+      branch.
+    language: sr
+    temperature: 0.0
+  local:
+    compute_type: int8
+    condition_on_previous_text: false
+    device: cpu
+    model: small
+    model_path: null
+    vad_filter: true
+  use_api: false
+post_processing:
+  add_trailing_space: true
+  input_method: pynput
+  remove_capitalization: false
+  remove_trailing_period: false
+  writing_key_press_delay: 0.005
+recording_options:
+  activation_key: f9
+  input_backend: auto
+  min_duration: 100
+  recording_mode: hold_to_record
+  sample_rate: 16000
+  silence_duration: 900
+  sound_device: null
