@@ -4,12 +4,38 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from tqdm import tqdm as _tqdm
 _tqdm.monitor_interval = 0
 import io
+import re
+import yaml
 import numpy as np
 import soundfile as sf
 from faster_whisper import WhisperModel
 from openai import OpenAI
 
 from utils import ConfigManager
+
+
+def _load_corrections():
+    """Load user's personal corrections from src/corrections.yaml."""
+    path = os.path.join('src', 'corrections.yaml')
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+        return {str(k): str(v) for k, v in data.items() if k and v}
+    except Exception as e:
+        ConfigManager.console_print(f'Could not load corrections.yaml: {e}')
+        return {}
+
+
+def _apply_corrections(text, corrections):
+    """Replace each key with its value, case-insensitive, whole-word match."""
+    if not corrections or not text:
+        return text
+    for wrong, right in corrections.items():
+        pattern = r'\b' + re.escape(wrong) + r'\b'
+        text = re.sub(pattern, right, text, flags=re.IGNORECASE)
+    return text
 
 def create_local_model():
     """
@@ -59,13 +85,18 @@ def transcribe_local(audio_data, local_model=None):
     # Convert int16 to float32
     audio_data_float = audio_data.astype(np.float32) / 32768.0
 
+    corrections = _load_corrections()
+    hotwords = ' '.join(corrections.values()) if corrections else None
+
     response = local_model.transcribe(audio=audio_data_float,
                                       language=model_options['common']['language'],
                                       initial_prompt=model_options['common']['initial_prompt'],
                                       condition_on_previous_text=model_options['local']['condition_on_previous_text'],
                                       temperature=model_options['common']['temperature'],
-                                      vad_filter=model_options['local']['vad_filter'],)
-    return ''.join([segment.text for segment in list(response[0])])
+                                      vad_filter=model_options['local']['vad_filter'],
+                                      hotwords=hotwords,)
+    text = ''.join([segment.text for segment in list(response[0])])
+    return _apply_corrections(text, corrections)
 
 def transcribe_api(audio_data):
     """

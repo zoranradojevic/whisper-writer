@@ -1,0 +1,22 @@
+# Personal corrections dictionary for WhisperWriter.
+#
+# Whenever Whisper mishears a word, add a line: "wrong text": "correct text"
+# Substitutions are applied after every transcription.
+# Keys are also passed to Whisper as hotwords so it prefers them while listening.
+#
+# Edit this file freely — no restart needed, changes load on next dictation.
+
+# Tech terms commonly misheard in Serbian dictation
+kemit: commit
+puš: push
+gitabu: GitHub
+gitaba: GitHub
+suplabejs: Supabase
+netlifaj: Netlify
+kloud kod: Claude Code
+kloud: Claude
+brouzer: browser
+fajll: fajl
+istajl: style
+
+# Add your own below as you find them

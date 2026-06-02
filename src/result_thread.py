@@ -89,7 +89,17 @@ class ResultThread(QThread):
             end_time = time.time()
 
             transcription_time = end_time - start_time
-            ConfigManager.console_print(f'Transcription completed in {transcription_time:.2f} seconds. Post-processed line: {result}')
+            audio_duration = len(audio_data) / self.sample_rate if self.sample_rate else 0
+            if audio_duration > 0:
+                rtf = transcription_time / audio_duration
+                speedup = 1 / rtf if rtf > 0 else 0
+                ConfigManager.console_print(
+                    f'Transcription completed in {transcription_time:.2f}s '
+                    f'(audio: {audio_duration:.2f}s, RTF: {rtf:.2f}, '
+                    f'{speedup:.1f}x realtime). Post-processed line: {result}'
+                )
+            else:
+                ConfigManager.console_print(f'Transcription completed in {transcription_time:.2f} seconds. Post-processed line: {result}')
 
             if not self.is_running:
                 return
