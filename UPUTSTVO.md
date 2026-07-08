@@ -82,4 +82,4 @@ npr. `kemit: commit`. Važi odmah za sledeću rečenicu, ne treba restart. Progr
 
 Detaljnije uputstvo (na engleskom, sa izborom modela, GPU podešavanjima itd.): [README.md](README.md)
 
-🇬🇧 This guide in English: [GUIDE.md](GUIDE.md)
+🇬🇧 English guide: [README.md](README.md)
