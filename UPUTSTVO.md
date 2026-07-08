@@ -39,8 +39,8 @@ Sačekaj poruku `Local model created.` — pojaviće se mali WhisperWriter prozo
 
 ## Svakodnevno korišćenje
 
-1. Dupli klik na **WhisperWriter.bat** u folderu programa (napravi sebi prečicu na desktop: desni klik na fajl → Send to → Desktop).
-2. Sačekaj da se pojavi prozor (30–60 sekundi — model se učitava), pa klikni **Start**.
+1. Dupli klik na **WhisperWriter-silent.vbs** u folderu programa — tihi start: bez ijednog prozora, samo ikonica pored sata (napravi sebi prečicu na desktop: desni klik na fajl → Send to → Desktop). Ako želiš da vidiš šta program radi (status, brzinu, greške), koristi **WhisperWriter.bat** — isti program, sa konzolom; kod tihog starta te poruke idu u `whisperwriter.log`.
+2. Sačekaj da se pojavi prozor (30–60 sekundi — model se učitava; ikonica pored sata se vidi odmah), pa klikni **Start**.
 3. Klikni mišem u polje gde želiš tekst.
 4. **Drži F9**, izgovori rečenicu, **pusti F9** — tekst se sam otkuca.
 

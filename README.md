@@ -105,7 +105,11 @@ NVIDIA GPU owners: set `device: cuda` and `compute_type: float16` in `config.yam
 
 ### 7. Create a Desktop shortcut (optional but recommended)
 
-In File Explorer, navigate to your repo folder. Right-click `WhisperWriter.bat` → **Send to** → **Desktop (create shortcut)**. Right-click the new shortcut on the Desktop → **Properties** → **Change Icon** → browse to `assets\ww-logo.ico`. Now you can launch WhisperWriter with one click.
+Two launchers are available:
+- `WhisperWriter-silent.vbs` — silent start: no console window, just the tray icon. App output goes to `whisperwriter.log`; crashes pop up a message box.
+- `WhisperWriter.bat` — starts with a visible console (status, RTF speed, errors). Handy for troubleshooting.
+
+In File Explorer, navigate to your repo folder. Right-click the launcher you prefer → **Send to** → **Desktop (create shortcut)**. Right-click the new shortcut on the Desktop → **Properties** → **Change Icon** → browse to `assets\ww-logo.ico`. Now you can launch WhisperWriter with one click.
 
 ### Stopping the app
 

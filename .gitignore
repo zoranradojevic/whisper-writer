@@ -131,3 +131,5 @@ dmypy.json
 # Configuration files
 config.yaml
 corrections.yaml
+# Log tihog starta
+whisperwriter.log

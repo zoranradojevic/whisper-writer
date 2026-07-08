@@ -44,6 +44,11 @@ class WhisperWriterApp(QObject):
         # pukne kao tihi access violation (isti DLL konflikt kao kod import redosleda).
         self.app = QApplication(sys.argv)
         self.app.setWindowIcon(QIcon(os.path.join('assets', 'ww-logo.png')))
+        # Tray ikonica se pravi PRE ucitavanja modela da korisnik odmah vidi
+        # da se aplikacija pokrece (bitno za tihi start bez konzole).
+        self.create_tray_icon()
+        self.tray_icon.setToolTip('WhisperWriter - loading model...')
+        self.app.processEvents()
         _mo = ConfigManager.get_config_section('model_options')
         self._preloaded_model = create_local_model() if not _mo.get('use_api') else None
 
@@ -87,31 +92,38 @@ class WhisperWriterApp(QObject):
 
     def create_tray_icon(self):
         """
-        Create the system tray icon and its context menu.
+        Create (or rebuild) the system tray icon and its context menu.
+        Called once before the model loads with a minimal menu, and again
+        from initialize_components with the full menu.
         """
-        self.tray_icon = QSystemTrayIcon(QIcon(os.path.join('assets', 'ww-logo.png')), self.app)
+        if not hasattr(self, 'tray_icon'):
+            self.tray_icon = QSystemTrayIcon(QIcon(os.path.join('assets', 'ww-logo.png')), self.app)
 
-        tray_menu = QMenu()
+        self.tray_menu = QMenu()
 
-        show_action = QAction('WhisperWriter Main Menu', self.app)
-        show_action.triggered.connect(self.main_window.show)
-        tray_menu.addAction(show_action)
+        if getattr(self, 'main_window', None):
+            show_action = QAction('WhisperWriter Main Menu', self.app)
+            show_action.triggered.connect(self.main_window.show)
+            self.tray_menu.addAction(show_action)
 
-        settings_action = QAction('Open Settings', self.app)
-        settings_action.triggered.connect(self.settings_window.show)
-        tray_menu.addAction(settings_action)
+        if getattr(self, 'settings_window', None):
+            settings_action = QAction('Open Settings', self.app)
+            settings_action.triggered.connect(self.settings_window.show)
+            self.tray_menu.addAction(settings_action)
 
         exit_action = QAction('Exit', self.app)
         exit_action.triggered.connect(self.exit_app)
-        tray_menu.addAction(exit_action)
+        self.tray_menu.addAction(exit_action)
 
-        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.setContextMenu(self.tray_menu)
+        self.tray_icon.setToolTip('WhisperWriter')
         self.tray_icon.show()
 
     def cleanup(self):
-        if self.key_listener:
+        # getattr: Exit iz tray-a je moguc i pre initialize_components (dok se model ucitava)
+        if getattr(self, 'key_listener', None):
             self.key_listener.stop()
-        if self.input_simulator:
+        if getattr(self, 'input_simulator', None):
             self.input_simulator.cleanup()
         if getattr(self, 'audio_ducker', None):
             self.audio_ducker.restore()
