@@ -21,9 +21,12 @@ for name in ('config.yaml', 'corrections.yaml'):
 load_dotenv()
 # CREATE_NO_WINDOW: bez toga bi child (console-subsystem python) otvorio novu
 # konzolu kada je run.py pokrenut preko pythonw. '-u' da log dobija ispis odmah.
+# PYTHONIOENCODING: preusmeren stdout inace koristi cp1252, pa print teksta
+# sa nasim slovima (c, s, z...) baca UnicodeEncodeError i ubija transkripciju.
+env = {**os.environ, 'PYTHONIOENCODING': 'utf-8'}
 flags = subprocess.CREATE_NO_WINDOW if (WINDOWLESS and os.name == 'nt') else 0
 result = subprocess.run([sys.executable, '-u', os.path.join('src', 'main.py')],
-                        stdout=log_file, stderr=log_file, creationflags=flags)
+                        stdout=log_file, stderr=log_file, creationflags=flags, env=env)
 if log_file:
     log_file.close()
 if result.returncode != 0:

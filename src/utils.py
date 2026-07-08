@@ -139,4 +139,11 @@ class ConfigManager:
     def console_print(cls, message):
         """Print a message to the console if enabled in the configuration."""
         if cls._instance and cls._instance.config['misc']['print_to_terminal']:
-            print(message)
+            try:
+                print(message)
+            except UnicodeEncodeError:
+                # Konzola/log sa ne-UTF8 kodiranjem ne sme da obori transkripciju
+                # zbog naseg slova u tekstu - ispisi sta se moze.
+                print(message.encode('ascii', errors='replace').decode('ascii'))
+            except Exception:
+                pass
