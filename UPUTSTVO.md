@@ -60,6 +60,10 @@ Posle izmene restartuj program.
 
 **Savet:** `activation_key: mouse_middle` + `recording_mode: press_to_toggle` = klik na točkić miša pokreće snimanje, drugi klik ga završava — bez tastature.
 
+## Ako tekst nije otkucan
+
+Desni klik na ikonicu pored sata → **History (click = copy)** → tu su poslednje 3 izdiktirane rečenice. Klik na bilo koju je kopira celu, pa je nalepi sa **Ctrl+V**.
+
 ## Kada pogrešno čuje neku reč
 
 Otvori `src\corrections.yaml` i dodaj liniju:

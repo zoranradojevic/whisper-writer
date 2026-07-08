@@ -39,6 +39,7 @@ class WhisperWriterApp(QObject):
         """
         super().__init__()
         ConfigManager.initialize()
+        self.transcription_history = []  # poslednje 3 izdiktirane recenice, najnovija prva
         # QApplication MORA da se kreira pre ucitavanja modela: create_local_model()
         # pokrece OpenMP thread pool-ove, pa Qt inicijalizacija posle toga povremeno
         # pukne kao tihi access violation (isti DLL konflikt kao kod import redosleda).
@@ -110,6 +111,10 @@ class WhisperWriterApp(QObject):
             settings_action = QAction('Open Settings', self.app)
             settings_action.triggered.connect(self.settings_window.show)
             self.tray_menu.addAction(settings_action)
+
+        self.history_menu = QMenu('History (click = copy)', self.tray_menu)
+        self.tray_menu.addMenu(self.history_menu)
+        self.update_history_menu()
 
         exit_action = QAction('Exit', self.app)
         exit_action.triggered.connect(self.exit_app)
@@ -227,10 +232,41 @@ class WhisperWriterApp(QObject):
         if self.result_thread and self.result_thread.isRunning():
             self.result_thread.stop()
 
+    def update_history_menu(self):
+        """Rebuild the tray History submenu from the last transcriptions."""
+        if not getattr(self, 'history_menu', None):
+            return
+        self.history_menu.clear()
+        if not self.transcription_history:
+            empty_action = QAction('(nothing dictated yet)', self.app)
+            empty_action.setEnabled(False)
+            self.history_menu.addAction(empty_action)
+            return
+        for text in self.transcription_history:
+            words = text.split()
+            label = ' '.join(words[:5])[:40]
+            if label != text:
+                label += '…'
+            action = QAction(label, self.app)
+            action.setToolTip(text)
+            action.triggered.connect(lambda checked=False, t=text: self.app.clipboard().setText(t))
+            self.history_menu.addAction(action)
+
+    def remember_transcription(self, text):
+        """Keep the last 3 transcriptions for the tray History menu."""
+        text = text.strip()
+        if not text:
+            return
+        self.transcription_history.insert(0, text)
+        del self.transcription_history[3:]
+        self.update_history_menu()
+
     def on_transcription_complete(self, result):
         """
         When the transcription is complete, type the result and start listening for the activation key again.
         """
+        # Prvo zapamti u History - i ako kucanje pukne, tekst ostaje dostupan za copy.
+        self.remember_transcription(result)
         self.input_simulator.typewrite(result)
 
         if ConfigManager.get_config_value('misc', 'noise_on_completion'):
