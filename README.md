@@ -2,7 +2,7 @@
 
 > Fork of [savbell/whisper-writer](https://github.com/savbell/whisper-writer) with a Windows DLL-conflict fix, a Qt plugin-path fix, a portable launcher, and a config template so new machines work out of the box. Extras on top of upstream: mouse-button shortcuts (e.g. middle-click to toggle recording), start/stop beeps, a personal corrections dictionary with Whisper hotwords, and transcription speed (RTF) logging. See "Quick Start" below.
 >
-> 🇷🇸 **Uputstvo na srpskom:** [UPUTSTVO.md](UPUTSTVO.md)
+> 📖 **Simple step-by-step guide:** [GUIDE.md](GUIDE.md) · 🇷🇸 **Uputstvo na srpskom:** [UPUTSTVO.md](UPUTSTVO.md)
 
 ## Quick Start (Windows, CPU, any language)
 

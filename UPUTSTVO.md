@@ -81,3 +81,5 @@ npr. `kemit: commit`. Važi odmah za sledeću rečenicu, ne treba restart. Progr
 - **Loše prepoznaje** — pričaj razgovetnije i u tišoj prostoriji; dodaj problematične reči u `corrections.yaml`; ili u `config.yaml` stavi veći model (`model: medium` — tačniji ali sporiji).
 
 Detaljnije uputstvo (na engleskom, sa izborom modela, GPU podešavanjima itd.): [README.md](README.md)
+
+🇬🇧 This guide in English: [GUIDE.md](GUIDE.md)
