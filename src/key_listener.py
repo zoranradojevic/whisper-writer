@@ -812,6 +812,23 @@ class PynputBackend(InputBackend):
 
     def _create_key_map(self):
         """Create a mapping from pynput keys to our internal KeyCode enum."""
+        key_map = self._create_base_key_map()
+
+        # Side mouse buttons are platform-specific in pynput: 'x1'/'x2' on
+        # Windows, 'button8'/'button9' on Linux; absent on macOS.
+        for button_name, key_code in (
+            ('x1', KeyCode.MOUSE_BACK),
+            ('x2', KeyCode.MOUSE_FORWARD),
+            ('button8', KeyCode.MOUSE_BACK),
+            ('button9', KeyCode.MOUSE_FORWARD),
+        ):
+            button = getattr(self.mouse.Button, button_name, None)
+            if button is not None:
+                key_map[button] = key_code
+
+        return key_map
+
+    def _create_base_key_map(self):
         return {
             # Modifier keys
             self.keyboard.Key.ctrl_l: KeyCode.CTRL_LEFT,

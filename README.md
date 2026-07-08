@@ -1,6 +1,8 @@
 # <img src="./assets/ww-logo.png" alt="WhisperWriter icon" width="25" height="25"> WhisperWriter
 
-> Fork of [savbell/whisper-writer](https://github.com/savbell/whisper-writer) with a Windows DLL-conflict fix, CPU thread fix, portable launcher, and a config template so new machines work out of the box. See "Quick Start" below.
+> Fork of [savbell/whisper-writer](https://github.com/savbell/whisper-writer) with a Windows DLL-conflict fix, a Qt plugin-path fix, a portable launcher, and a config template so new machines work out of the box. Extras on top of upstream: mouse-button shortcuts (e.g. middle-click to toggle recording), start/stop beeps, a personal corrections dictionary with Whisper hotwords, and transcription speed (RTF) logging. See "Quick Start" below.
+>
+> 🇷🇸 **Uputstvo na srpskom:** [UPUTSTVO.md](UPUTSTVO.md)
 
 ## Quick Start (Windows, CPU, any language)
 
@@ -66,11 +68,28 @@ model_options:
   local:
     model: small      # tiny, base, small, medium, large-v3 (slower but more accurate)
 recording_options:
-  activation_key: f9  # f9, f10, pause, ctrl+alt+space, ...
+  activation_key: f9  # f9, pause, ctrl+alt+space, ... or a mouse button:
+                      # mouse_middle (wheel click), mouse_back, mouse_forward
   recording_mode: hold_to_record  # or: press_to_toggle, continuous, voice_activity_detection
 ```
 
 Restart the app after editing `config.yaml`.
+
+> **Tip:** `activation_key: mouse_middle` + `recording_mode: press_to_toggle` gives you click-the-wheel-to-start, click-again-to-stop dictation without touching the keyboard.
+
+#### Personal corrections dictionary
+
+If Whisper keeps mishearing a word (names, technical terms), add a line to `src\corrections.yaml`:
+
+```yaml
+wrong text: correct text
+```
+
+Corrections are applied after every transcription (case-insensitive, whole words), and the correct words are also passed to Whisper as *hotwords* so it starts hearing them right in the first place. Changes load on the next dictation — no restart needed.
+
+#### Sound feedback
+
+A short beep plays when recording starts and stops (`recording_beeps` option), and optionally when the text has been typed out (`noise_on_completion`). The console also prints the transcription speed after every dictation (`RTF` — real-time factor; lower is faster).
 
 #### Picking a model by hardware
 

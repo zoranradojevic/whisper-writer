@@ -14,4 +14,9 @@ for name in ('config.yaml', 'corrections.yaml'):
         print(f'Created {target} from template.')
 
 load_dotenv()
-subprocess.run([sys.executable, os.path.join('src', 'main.py')])
+result = subprocess.run([sys.executable, os.path.join('src', 'main.py')])
+if result.returncode != 0:
+    code = result.returncode & 0xFFFFFFFF
+    print(f'WhisperWriter se srusio! Izlazni kod: {result.returncode} (0x{code:08X})')
+    if code == 0xC0000005:
+        print('Ovo je Windows access violation - verovatno konflikt DLL biblioteka.')

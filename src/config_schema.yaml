@@ -89,7 +89,7 @@ recording_options:
   activation_key:
     value: ctrl+shift+space
     type: str
-    description: "The keyboard shortcut to activate the recording and transcribing process. Separate keys with a '+'."
+    description: "The shortcut to activate the recording and transcribing process. Separate keys with a '+'. Keyboard examples: 'ctrl+shift+space', 'f9'. Mouse buttons are also supported: 'mouse_middle' (wheel click), 'mouse_back', 'mouse_forward'. Combine with 'press_to_toggle' recording mode to start recording on first press and stop on second press."
   input_backend:
     value: auto
     type: str
@@ -165,3 +165,7 @@ misc:
     value: false
     type: bool
     description: "Set to true to play a noise after the transcription has been typed out."
+  recording_beeps:
+    value: true
+    type: bool
+    description: "Set to true to play a short high beep when recording starts and a lower beep when it stops."

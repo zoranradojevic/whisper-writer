@@ -6,6 +6,15 @@ import ctranslate2  # noqa: F401
 import os
 import sys
 import time
+
+# Qt trazi "windows" platform plugin preko prefiksa ugradjenog u Qt5Core.dll;
+# ako je taj zapis ostecen, prefix je prazan i app puca sa "Could not find the
+# Qt platform plugin". Zato putanju do plugin-a postavljamo eksplicitno.
+import PyQt5
+_qt_plugins = os.path.join(os.path.dirname(PyQt5.__file__), 'Qt5', 'plugins')
+if os.path.isdir(_qt_plugins):
+    os.environ.setdefault('QT_PLUGIN_PATH', _qt_plugins)
+    os.environ.setdefault('QT_QPA_PLATFORM_PLUGIN_PATH', os.path.join(_qt_plugins, 'platforms'))
 from audioplayer import AudioPlayer
 from pynput.keyboard import Controller
 from PyQt5.QtCore import QObject, QProcess
@@ -29,10 +38,13 @@ class WhisperWriterApp(QObject):
         """
         super().__init__()
         ConfigManager.initialize()
-        _mo = ConfigManager.get_config_section('model_options')
-        self._preloaded_model = create_local_model() if not _mo.get('use_api') else None
+        # QApplication MORA da se kreira pre ucitavanja modela: create_local_model()
+        # pokrece OpenMP thread pool-ove, pa Qt inicijalizacija posle toga povremeno
+        # pukne kao tihi access violation (isti DLL konflikt kao kod import redosleda).
         self.app = QApplication(sys.argv)
         self.app.setWindowIcon(QIcon(os.path.join('assets', 'ww-logo.png')))
+        _mo = ConfigManager.get_config_section('model_options')
+        self._preloaded_model = create_local_model() if not _mo.get('use_api') else None
 
         self.settings_window = SettingsWindow()
         self.settings_window.settings_closed.connect(self.on_settings_closed)
@@ -158,8 +170,31 @@ class WhisperWriterApp(QObject):
         if not ConfigManager.get_config_value('misc', 'hide_status_window'):
             self.result_thread.statusSignal.connect(self.status_window.updateStatus)
             self.status_window.closeSignal.connect(self.stop_result_thread)
+        self.result_thread.statusSignal.connect(self.on_status_change)
         self.result_thread.resultSignal.connect(self.on_transcription_complete)
         self.result_thread.start()
+
+    def on_status_change(self, status):
+        """
+        Play a short beep when recording starts ('recording') and stops ('transcribing').
+        """
+        if not ConfigManager.get_config_value('misc', 'recording_beeps'):
+            return
+        if status == 'recording':
+            self._play_sound('beep-start.wav')
+        elif status == 'transcribing':
+            self._play_sound('beep-stop.wav')
+
+    def _play_sound(self, filename):
+        """
+        Play a sound file without blocking the UI thread.
+        """
+        try:
+            # Referenca se cuva na self da GC ne bi prekinuo reprodukciju.
+            self._beep_player = AudioPlayer(os.path.join('assets', filename))
+            self._beep_player.play(block=False)
+        except Exception as e:
+            ConfigManager.console_print(f'Could not play {filename}: {e}')
 
     def stop_result_thread(self):
         """
