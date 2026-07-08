@@ -1,6 +1,8 @@
 misc:
   hide_status_window: false
-  # Kratak bip kad snimanje pocne (visi ton) i kad se zavrsi (nizi ton).
+  # Utisaj muziku/video iz drugih aplikacija dok traje snimanje (samo Windows).
+  mute_audio_while_recording: false
+  # Kratak bip kad snimanje pocne i kad se zavrsi.
   recording_beeps: true
   noise_on_completion: false
   print_to_terminal: true

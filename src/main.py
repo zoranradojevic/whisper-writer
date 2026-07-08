@@ -28,6 +28,7 @@ from ui.settings_window import SettingsWindow
 from ui.status_window import StatusWindow
 from transcription import create_local_model
 from input_simulation import InputSimulator
+from audio_ducker import AudioDucker
 from utils import ConfigManager
 
 
@@ -61,6 +62,7 @@ class WhisperWriterApp(QObject):
         Initialize the components of the application.
         """
         self.input_simulator = InputSimulator()
+        self.audio_ducker = AudioDucker()
 
         self.key_listener = KeyListener()
         self.key_listener.add_callback("on_activate", self.on_activation)
@@ -111,6 +113,8 @@ class WhisperWriterApp(QObject):
             self.key_listener.stop()
         if self.input_simulator:
             self.input_simulator.cleanup()
+        if getattr(self, 'audio_ducker', None):
+            self.audio_ducker.restore()
 
     def exit_app(self):
         """
@@ -176,14 +180,22 @@ class WhisperWriterApp(QObject):
 
     def on_status_change(self, status):
         """
-        Play a short beep when recording starts ('recording') and stops ('transcribing').
+        React to recording status: mute other apps' audio and play a short
+        beep when recording starts, restore audio and beep when it stops.
         """
-        if not ConfigManager.get_config_value('misc', 'recording_beeps'):
-            return
+        beeps = ConfigManager.get_config_value('misc', 'recording_beeps')
+        mute = ConfigManager.get_config_value('misc', 'mute_audio_while_recording')
         if status == 'recording':
-            self._play_sound('beep-start.wav')
-        elif status == 'transcribing':
-            self._play_sound('beep-stop.wav')
+            if mute:
+                self.audio_ducker.mute_others()
+            if beeps:
+                self._play_sound('beep-start.wav')
+        else:
+            # 'transcribing' or 'idle' - recording is over either way
+            if mute:
+                self.audio_ducker.restore()
+            if beeps and status == 'transcribing':
+                self._play_sound('beep-stop.wav')
 
     def _play_sound(self, filename):
         """

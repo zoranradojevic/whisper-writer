@@ -169,3 +169,7 @@ misc:
     value: true
     type: bool
     description: "Set to true to play a short high beep when recording starts and a lower beep when it stops."
+  mute_audio_while_recording:
+    value: false
+    type: bool
+    description: "Set to true to mute all other applications' sound (music, videos) while recording, and restore it when recording stops. Windows only."
