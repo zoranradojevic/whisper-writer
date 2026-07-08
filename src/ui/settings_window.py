@@ -3,7 +3,8 @@ import sys
 from dotenv import set_key, load_dotenv
 from PyQt5.QtWidgets import (
     QApplication, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QCheckBox,
-    QMessageBox, QTabWidget, QWidget, QSizePolicy, QSpacerItem, QToolButton, QStyle, QFileDialog
+    QMessageBox, QTabWidget, QWidget, QSizePolicy, QSpacerItem, QToolButton, QStyle, QFileDialog,
+    QDialog
 )
 from PyQt5.QtCore import Qt, QCoreApplication, QProcess, pyqtSignal
 
@@ -12,6 +13,87 @@ from ui.base_window import BaseWindow
 from utils import ConfigManager
 
 load_dotenv()
+
+
+class ShortcutCaptureDialog(QDialog):
+    """
+    Modal dialog that captures the next key combination or mouse button press
+    and stores it as a config-compatible string (e.g. 'ctrl+alt+space',
+    'mouse_middle') in self.captured.
+    """
+
+    _MOUSE_BUTTONS = {}  # filled lazily so Qt is imported by then
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.captured = None
+        self.setWindowTitle('Record shortcut')
+        self.setModal(True)
+        self.setFixedSize(360, 110)
+        layout = QVBoxLayout(self)
+        label = QLabel(
+            'Press a key combination (e.g. Ctrl+Alt+Space)\n'
+            'or click a mouse button (middle / back / forward).\n'
+            'Esc = cancel. Left/right mouse buttons are not allowed.'
+        )
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        self._key_names = self._build_key_names()
+
+    @staticmethod
+    def _build_key_names():
+        """Map Qt key codes to the names used in parse_key_combination."""
+        names = {
+            Qt.Key_Space: 'space', Qt.Key_Return: 'enter', Qt.Key_Tab: 'tab',
+            Qt.Key_Backspace: 'backspace', Qt.Key_Insert: 'insert', Qt.Key_Delete: 'delete',
+            Qt.Key_Home: 'home', Qt.Key_End: 'end',
+            Qt.Key_PageUp: 'page_up', Qt.Key_PageDown: 'page_down',
+            Qt.Key_Pause: 'pause', Qt.Key_ScrollLock: 'scroll_lock',
+            Qt.Key_Up: 'up', Qt.Key_Down: 'down', Qt.Key_Left: 'left', Qt.Key_Right: 'right',
+        }
+        for i in range(24):
+            names[Qt.Key_F1 + i] = f'f{i + 1}'
+        for i in range(26):
+            names[Qt.Key_A + i] = chr(ord('a') + i)
+        digit_names = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+        for i in range(10):
+            names[Qt.Key_0 + i] = digit_names[i]
+        return names
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key_Escape:
+            self.reject()
+            return
+        if key in (Qt.Key_Control, Qt.Key_Alt, Qt.Key_AltGr, Qt.Key_Shift, Qt.Key_Meta):
+            return  # modifier alone - wait for the rest of the combo
+        name = self._key_names.get(key)
+        if not name:
+            return  # unsupported key - keep waiting
+        parts = []
+        mods = event.modifiers()
+        if mods & Qt.ControlModifier:
+            parts.append('ctrl')
+        if mods & Qt.AltModifier:
+            parts.append('alt')
+        if mods & Qt.ShiftModifier:
+            parts.append('shift')
+        if mods & Qt.MetaModifier:
+            parts.append('meta')
+        parts.append(name)
+        self.captured = '+'.join(parts)
+        self.accept()
+
+    def mousePressEvent(self, event):
+        buttons = {
+            Qt.MiddleButton: 'mouse_middle',
+            Qt.BackButton: 'mouse_back',
+            Qt.ForwardButton: 'mouse_forward',
+        }
+        name = buttons.get(event.button())
+        if name:  # left/right are needed for using the UI, so they are ignored
+            self.captured = name
+            self.accept()
 
 class SettingsWindow(BaseWindow):
     settings_closed = pyqtSignal()
@@ -136,6 +218,32 @@ class SettingsWindow(BaseWindow):
         if key == 'api_key':
             widget.setEchoMode(QLineEdit.Password)
             widget.setText(os.getenv('OPENAI_API_KEY') or value)
+        elif key == 'activation_key':
+            layout = QHBoxLayout()
+            layout.addWidget(widget)
+
+            record_button = QPushButton('Record')
+            record_button.setToolTip('Click, then press the key combination or mouse button you want.')
+            record_button.clicked.connect(lambda: self.capture_shortcut(widget, append=False))
+            layout.addWidget(record_button)
+
+            add_button = QPushButton('+')
+            add_button.setFixedWidth(30)
+            add_button.setToolTip('Record an ADDITIONAL shortcut (any of the listed shortcuts will work).')
+            add_button.clicked.connect(lambda: self.capture_shortcut(widget, append=True))
+            layout.addWidget(add_button)
+
+            undo_button = QPushButton('↩')
+            undo_button.setFixedWidth(30)
+            undo_button.setToolTip('Restore the last saved value.')
+            undo_button.clicked.connect(lambda: widget.setText(
+                ConfigManager.get_config_value('recording_options', 'activation_key') or ''))
+            layout.addWidget(undo_button)
+
+            layout.setContentsMargins(0, 0, 0, 0)
+            container = QWidget()
+            container.setLayout(layout)
+            return container
         elif key == 'model_path':
             layout = QHBoxLayout()
             layout.addWidget(widget)
@@ -162,6 +270,18 @@ class SettingsWindow(BaseWindow):
         if sub_category:
             return ConfigManager.get_config_value(category, sub_category, key) or meta['value']
         return ConfigManager.get_config_value(category, key) or meta['value']
+
+    def capture_shortcut(self, line_edit, append=False):
+        """Open the capture dialog and write the captured shortcut into the field."""
+        dialog = ShortcutCaptureDialog(self)
+        if dialog.exec_() == QDialog.Accepted and dialog.captured:
+            current = line_edit.text().strip()
+            if append and current:
+                if dialog.captured in [c.strip() for c in current.split(',')]:
+                    return  # already listed
+                line_edit.setText(f'{current}, {dialog.captured}')
+            else:
+                line_edit.setText(dialog.captured)
 
     def browse_model_path(self, widget):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Whisper Model File", "", "Model Files (*.bin);;All Files (*)")
