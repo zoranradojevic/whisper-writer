@@ -70,13 +70,17 @@ class InputSimulator:
         """
         Simulate typing using pynput.
 
+        Uses keyboard.type() per character rather than press()/release() so that
+        non-ASCII characters (e.g. č, ć, š, ž, đ) are emitted as Unicode via the
+        OS input path instead of being mapped to the active keyboard layout,
+        which mangles characters absent from that layout.
+
         Args:
             text (str): The text to type.
             interval (float): The interval between keystrokes in seconds.
         """
         for char in text:
-            self.keyboard.press(char)
-            self.keyboard.release(char)
+            self.keyboard.type(char)
             time.sleep(interval)
 
     def _typewrite_ydotool(self, text, interval):
