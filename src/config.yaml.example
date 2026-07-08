@@ -30,6 +30,8 @@ post_processing:
 recording_options:
   # Precica moze biti kombinacija tastera ('ctrl+shift+space', 'f9')
   # ili taster misa: 'mouse_middle' (tockic), 'mouse_back', 'mouse_forward'.
+  # Vise alternativnih precica se razdvaja zarezom, npr:
+  #   activation_key: mouse_middle, ctrl+alt+space
   activation_key: f9
   input_backend: auto
   min_duration: 100

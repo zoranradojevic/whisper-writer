@@ -280,7 +280,7 @@ class KeyListener:
         """Initialize the KeyListener with backends and activation keys."""
         self.backends = []
         self.active_backend = None
-        self.key_chord = None
+        self.key_chords = []
         self.callbacks = {
             "on_activate": [],
             "on_deactivate": []
@@ -352,10 +352,22 @@ class KeyListener:
             self.active_backend.stop()
 
     def load_activation_keys(self):
-        """Load activation keys from configuration."""
-        key_combination = ConfigManager.get_config_value('recording_options', 'activation_key')
-        keys = self.parse_key_combination(key_combination)
-        self.set_activation_keys(keys)
+        """
+        Load activation keys from configuration.
+        Multiple alternative shortcuts can be separated by commas,
+        e.g. 'mouse_middle, ctrl+alt+space' - either one activates recording.
+        """
+        key_combination = ConfigManager.get_config_value('recording_options', 'activation_key') or ''
+        self.key_chords = []
+        for combo in key_combination.split(','):
+            combo = combo.strip()
+            if not combo:
+                continue
+            keys = self.parse_key_combination(combo)
+            if keys:
+                self.key_chords.append(KeyChord(keys))
+            else:
+                print(f"Ignoring activation combo with no valid keys: '{combo}'")
 
     def parse_key_combination(self, combination_string: str) -> Set[KeyCode | frozenset[KeyCode]]:
         """Parse a string representation of key combination into a set of KeyCodes."""
@@ -381,17 +393,18 @@ class KeyListener:
 
     def set_activation_keys(self, keys: Set[KeyCode]):
         """Set the activation keys for the KeyChord."""
-        self.key_chord = KeyChord(keys)
+        self.key_chords = [KeyChord(keys)]
 
     def on_input_event(self, event):
-        """Handle input events and trigger callbacks if the key chord becomes active or inactive."""
-        if not self.key_chord or not self.active_backend:
+        """Handle input events and trigger callbacks if any key chord becomes active or inactive."""
+        if not self.key_chords or not self.active_backend:
             return
 
         key, event_type = event
 
-        was_active = self.key_chord.is_active()
-        is_active = self.key_chord.update(key, event_type)
+        was_active = any(chord.is_active() for chord in self.key_chords)
+        # List comprehension (not a generator) so EVERY chord gets the event.
+        is_active = any([chord.update(key, event_type) for chord in self.key_chords])
 
         if not was_active and is_active:
             self._trigger_callbacks("on_activate")

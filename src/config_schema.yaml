@@ -89,7 +89,7 @@ recording_options:
   activation_key:
     value: ctrl+shift+space
     type: str
-    description: "The shortcut to activate the recording and transcribing process. Separate keys with a '+'. Keyboard examples: 'ctrl+shift+space', 'f9'. Mouse buttons are also supported: 'mouse_middle' (wheel click), 'mouse_back', 'mouse_forward'. Combine with 'press_to_toggle' recording mode to start recording on first press and stop on second press."
+    description: "The shortcut to activate the recording and transcribing process. Separate keys with a '+'. Keyboard examples: 'ctrl+shift+space', 'f9'. Mouse buttons are also supported: 'mouse_middle' (wheel click), 'mouse_back', 'mouse_forward'. You can set several alternative shortcuts separated by commas, e.g. 'mouse_middle, ctrl+alt+space' - either one works. Combine with 'press_to_toggle' recording mode to start recording on first press and stop on second press."
   input_backend:
     value: auto
     type: str
