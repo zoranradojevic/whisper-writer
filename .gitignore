@@ -133,3 +133,7 @@ config.yaml
 corrections.yaml
 # Log tihog starta
 whisperwriter.log
+# Poslednji snimak (za testiranje modela)
+last_recording.wav
+# Rezervne kopije pre prelaska na turbo model (lokalno)
+*.before-turbo.*

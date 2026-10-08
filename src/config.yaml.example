@@ -12,22 +12,28 @@ model_options:
     base_url: https://api.openai.com/v1
     model: whisper-1
   common:
-    initial_prompt: ''
-    language: en
+    # Kratak opis teme i retke reci koje ce se pojavljivati - model ih tada ređe greši.
+    initial_prompt: 'Diktiram na srpskom, latinicom, sa pravilnim znakovima interpunkcije.'
+    language: sr
     temperature: 0.0
   local:
     compute_type: int8
-    condition_on_previous_text: false
+    condition_on_previous_text: true
     device: cpu
-    model: small
+    # large-v3-turbo je najtačniji za srpski (~1,6 GB). small je duplo brži, ali greši mnogo više.
+    model: large-v3-turbo
     model_path: null
     vad_filter: true
+    # 0 = koristi sva fizička jezgra procesora.
+    cpu_threads: 0
   use_api: false
 post_processing:
   add_trailing_space: true
   input_method: pynput
   remove_capitalization: false
   remove_trailing_period: false
+  # Briše poštapalice (ovaj, znači, kako se zove, eee...) kad stoje same između zareza.
+  remove_fillers: true
   writing_key_press_delay: 0.005
 recording_options:
   # Precica moze biti kombinacija tastera ('ctrl+shift+space', 'f9')

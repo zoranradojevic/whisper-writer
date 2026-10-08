@@ -1,16 +1,68 @@
+import queue
+import threading
 import time
 import traceback
 import numpy as np
 import sounddevice as sd
-import tempfile
-import wave
+import soundfile as sf
 import webrtcvad
 from PyQt5.QtCore import QThread, QMutex, pyqtSignal
 from collections import deque
 from threading import Event
 
-from transcription import transcribe
+from transcription import transcribe_raw, post_process_transcription
 from utils import ConfigManager
+
+# Long dictations are transcribed in chunks while the user is still speaking, so after
+# the stop only the last chunk is left. Chunks are cut in pauses, never mid-word.
+# Whisper always encodes a 30 s window, so chunks close to that size waste nothing.
+CHUNK_MIN_SECONDS = 15   # start looking for a pause after this much audio
+CHUNK_MAX_SECONDS = 28   # cut here even without a proper pause
+CHUNK_PAUSE_MS = 300     # silence this long counts as a pause
+
+# The last recording is kept here (overwritten every time) for testing models on it.
+LAST_RECORDING_PATH = 'last_recording.wav'
+
+
+class ChunkTranscriber:
+    """Transcribes audio chunks one after another on a background thread."""
+
+    def __init__(self, local_model):
+        self.local_model = local_model
+        self.queue = queue.Queue()
+        self.texts = []
+        self.error = None
+        self.chunk_count = 0
+        self.thread = threading.Thread(target=self._work, daemon=True)
+        self.thread.start()
+
+    def submit(self, audio_data):
+        self.chunk_count += 1
+        self.queue.put(audio_data)
+
+    def finish(self):
+        """Wait for all submitted chunks and return the joined raw text."""
+        self.queue.put(None)
+        self.thread.join()
+        if self.error:
+            raise self.error
+        return ' '.join(t.strip() for t in self.texts if t.strip())
+
+    def cancel(self):
+        self.queue.put(None)
+
+    def _work(self):
+        while True:
+            audio_data = self.queue.get()
+            if audio_data is None:
+                return
+            if self.error:
+                continue
+            try:
+                previous_text = ' '.join(self.texts)
+                self.texts.append(transcribe_raw(audio_data, self.local_model, previous_text))
+            except Exception as e:
+                self.error = e
 
 
 class ResultThread(QThread):
@@ -71,22 +123,27 @@ class ResultThread(QThread):
 
             self.statusSignal.emit('recording')
             ConfigManager.console_print('Recording...')
-            audio_data = self._record_audio()
+            transcriber = ChunkTranscriber(self.local_model)
+            audio_data = self._record_audio(transcriber)
 
             if not self.is_running:
+                transcriber.cancel()
                 return
 
             if audio_data is None:
+                transcriber.cancel()
                 self.statusSignal.emit('idle')
                 return
 
             self.statusSignal.emit('transcribing')
             ConfigManager.console_print('Transcribing...')
 
-            # Time the transcription process
+            # Measured from the stop: that is how long the user actually waits.
             start_time = time.time()
-            result = transcribe(audio_data, self.local_model)
+            result = post_process_transcription(transcriber.finish())
             end_time = time.time()
+            if transcriber.chunk_count > 1:
+                ConfigManager.console_print(f'Transcribed in {transcriber.chunk_count} chunks while recording.')
 
             transcription_time = end_time - start_time
             audio_duration = len(audio_data) / self.sample_rate if self.sample_rate else 0
@@ -114,9 +171,9 @@ class ResultThread(QThread):
         finally:
             self.stop_recording()
 
-    def _record_audio(self):
+    def _record_audio(self, transcriber):
         """
-        Record audio from the microphone and save it to a temporary file.
+        Record audio from the microphone, handing finished chunks to the transcriber.
 
         :return: numpy array of audio data, or None if the recording is too short
         """
@@ -138,8 +195,17 @@ class ResultThread(QThread):
             speech_detected = False
             silent_frame_count = 0
 
+        # Separate VAD for chunking, so it works in every recording mode.
+        chunk_vad = webrtcvad.Vad(2)
+        chunk_min_frames = int(CHUNK_MIN_SECONDS * 1000 / frame_duration_ms)
+        chunk_max_frames = int(CHUNK_MAX_SECONDS * 1000 / frame_duration_ms)
+        pause_frames = int(CHUNK_PAUSE_MS / frame_duration_ms)
+        chunk_start = 0      # index of the first frame not yet sent to the transcriber
+        silent_run = 0       # consecutive non-speech frames
+        last_pause_cut = 0   # frame index in the middle of the latest pause
+
         audio_buffer = deque(maxlen=frame_size)
-        recording = []
+        recording = []  # list of frames
 
         data_ready = Event()
 
@@ -162,15 +228,30 @@ class ResultThread(QThread):
                 # Save frame
                 frame = np.array(list(audio_buffer), dtype=np.int16)
                 audio_buffer.clear()
-                recording.extend(frame)
+                recording.append(frame)
 
                 # Avoid trying to detect voice in initial frames
                 if initial_frames_to_skip > 0:
                     initial_frames_to_skip -= 1
                     continue
 
+                is_speech = chunk_vad.is_speech(frame.tobytes(), self.sample_rate)
+                silent_run = 0 if is_speech else silent_run + 1
+                if silent_run >= pause_frames:
+                    last_pause_cut = len(recording) - silent_run // 2
+                chunk_frames = len(recording) - chunk_start
+                cut = None
+                if chunk_frames >= chunk_min_frames and silent_run >= pause_frames:
+                    cut = last_pause_cut
+                elif chunk_frames >= chunk_max_frames:
+                    # Fall back to the last pause only if it leaves a useful chunk.
+                    cut = last_pause_cut if last_pause_cut - chunk_start >= chunk_min_frames // 3 else len(recording)
+                if cut:
+                    transcriber.submit(np.concatenate(recording[chunk_start:cut]))
+                    chunk_start = cut
+
                 if vad:
-                    if vad.is_speech(frame.tobytes(), self.sample_rate):
+                    if is_speech:
                         silent_frame_count = 0
                         if not speech_detected:
                             ConfigManager.console_print("Speech detected.")
@@ -181,7 +262,7 @@ class ResultThread(QThread):
                     if speech_detected and silent_frame_count > silence_frames:
                         break
 
-        audio_data = np.array(recording, dtype=np.int16)
+        audio_data = np.concatenate(recording) if recording else np.array([], dtype=np.int16)
         duration = len(audio_data) / self.sample_rate
 
         ConfigManager.console_print(f'Recording finished. Size: {audio_data.size} samples, Duration: {duration:.2f} seconds')
@@ -191,5 +272,13 @@ class ResultThread(QThread):
         if (duration * 1000) < min_duration_ms:
             ConfigManager.console_print(f'Discarded due to being too short.')
             return None
+
+        if chunk_start < len(recording):
+            transcriber.submit(np.concatenate(recording[chunk_start:]))
+
+        try:
+            sf.write(LAST_RECORDING_PATH, audio_data, self.sample_rate)
+        except Exception as e:
+            ConfigManager.console_print(f'Could not save {LAST_RECORDING_PATH}: {e}')
 
         return audio_data

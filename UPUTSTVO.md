@@ -5,7 +5,7 @@ Program koji sluša tvoj mikrofon i **kuca ono što izgovoriš** u bilo koji pro
 ## Šta ti treba
 
 - Windows 10 ili 11
-- ~2,5 GB slobodnog prostora (program + model)
+- ~4 GB slobodnog prostora (program + model)
 - Mikrofon (i onaj u laptopu je dovoljan)
 
 ## Instalacija (jednom, ~10 minuta)
@@ -29,7 +29,7 @@ uv venv --python 3.11
 uv pip install -r requirements.txt
 ```
 
-**Korak 3.** Prvo pokretanje (skida model za prepoznavanje govora, ~500 MB, samo jednom):
+**Korak 3.** Prvo pokretanje (skida model za prepoznavanje govora `large-v3-turbo`, ~1,6 GB, samo jednom):
 
 ```powershell
 .venv\Scripts\python.exe run.py
@@ -78,8 +78,14 @@ npr. `kemit: commit`. Važi odmah za sledeću rečenicu, ne treba restart. Progr
 
 - **Ništa se ne dešava posle pokretanja** — sačekaj do minut: model se učitava pre nego što se prozor pojavi.
 - **Prečica ne radi** — proveri da li si kliknuo **Start** u glavnom prozoru.
-- **Loše prepoznaje** — pričaj razgovetnije i u tišoj prostoriji; dodaj problematične reči u `corrections.yaml`; ili u `config.yaml` stavi veći model (`model: medium` — tačniji ali sporiji).
+- **Loše prepoznaje** — pričaj razgovetnije i u tišoj prostoriji; dodaj problematične reči u `corrections.yaml`; ili u `config.yaml` promeni model (`large-v3-turbo` je podrazumevani i najtačniji za srpski; `model: small` je duplo brži ali pravi mnogo više grešaka).
 
 Detaljnije uputstvo (na engleskom, sa izborom modela, GPU podešavanjima itd.): [README.md](README.md)
 
 🇬🇧 English guide: [README.md](README.md)
+
+## Brzina i poštapalice
+
+- Duže poruke se prepoznaju **dok pričaš** (deo po deo, na pauzama), pa posle puštanja dugmeta čekaš samo poslednji deo — oko 20 s za poruku od minut.
+- Poštapalice (ovaj, znači, kako se zove, eee...) se automatski brišu. Isključuje se u `src\config.yaml`: `remove_fillers: false`.
+- Poslednji snimak se uvek čuva u `last_recording.wav` (samo lokalno, prepisuje se svaki put) — korisno za testiranje modela.

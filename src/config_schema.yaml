@@ -54,6 +54,7 @@ model_options:
         - large-v1
         - large-v2
         - large-v3
+        - large-v3-turbo
     device:
       value: auto
       type: str
@@ -79,6 +80,10 @@ model_options:
       value: false
       type: bool
       description: "Set to true to use a voice activity detection (VAD) filter to remove silence from the recording."
+    cpu_threads:
+      value: 0
+      type: int
+      description: "Number of CPU threads for the local model. 0 = use all physical cores."
     model_path:
       value: null
       type: str
@@ -142,6 +147,10 @@ post_processing:
     value: false
     type: bool
     description: "Set to true to convert the transcribed text to lowercase."
+  remove_fillers:
+    value: false
+    type: bool
+    description: "Set to true to remove Serbian filler words (ovaj, znači, kako se zove, eee...) when they stand alone between commas or at the start of a sentence."
   input_method:
     value: pynput
     type: str
