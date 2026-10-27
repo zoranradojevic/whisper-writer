@@ -9,7 +9,7 @@ import yaml
 import numpy as np
 import soundfile as sf
 from faster_whisper import WhisperModel
-from openai import OpenAI
+from openai import OpenAI, NOT_GIVEN
 
 from utils import ConfigManager
 
@@ -221,8 +221,9 @@ def transcribe_api(audio_data, previous_text=None, provider=None):
         response = client.audio.transcriptions.create(
             model=model,
             file=('audio.wav', wav, 'audio/wav'),
-            language=language,
-            prompt=_build_prompt(previous_text),
+            # language None = auto-detect; the SDK must omit the field, not send null.
+            language=language or NOT_GIVEN,
+            prompt=_build_prompt(previous_text) or NOT_GIVEN,
             temperature=model_options['common']['temperature'],
         )
         text = response.text
@@ -307,9 +308,11 @@ def post_process_transcription(transcription):
     Apply post-processing to the transcription.
     """
     post_processing = ConfigManager.get_config_section('post_processing')
-    if post_processing.get('ekavian'):
+    # Both rules are Serbian word lists; on other languages they would damage the text.
+    is_serbian = ConfigManager.get_config_value('model_options', 'common', 'language') == 'sr'
+    if is_serbian and post_processing.get('ekavian'):
         transcription = _to_ekavian(transcription)
-    if post_processing.get('remove_fillers'):
+    if is_serbian and post_processing.get('remove_fillers'):
         transcription = _remove_fillers(transcription)
     transcription = transcription.strip()
     # Some cloud models leave the last sentence without a period.

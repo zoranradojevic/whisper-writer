@@ -19,7 +19,8 @@ Program sam bira: ako ima ključeve i internet, radi preko interneta; ako ne, lo
 2. Desni klik na skinuti ZIP → **Extract All** (Raspakuj sve) → izaberi npr. `C:\whisper-writer`.
 3. U raspakovanom folderu dupli klik na **INSTALIRAJ.bat**.
    - Ako Windows kaže *"Windows protected your PC"*: klikni **More info** → **Run anyway**.
-4. Instalacija sama skida sve što treba (par minuta), pa te pita tri stvari — za sve je odgovor **Enter** (= da):
+4. Prvo pita **jezik diktiranja**: srpski (Enter), engleski, nemački, **auto** (za one koji mešaju jezike) ili bilo koji drugi jezik (npr. `fr`, `hr`). Za druge jezike nastavlja na engleskom, a ekavica i brisanje poštapalica rade samo za srpski.
+5. Zatim sama skida sve što treba (par minuta) i pita još tri stvari — za sve je odgovor **Enter** (= da):
    - da skine lokalni model (~1,6 GB, za rad bez interneta),
    - da napravi prečice na desktopu,
    - da podesiš brzo prepoznavanje preko interneta — tu te vodi korak po korak (vidi sledeći deo).
@@ -61,7 +62,7 @@ Ako želiš da vidiš šta program radi (status, brzinu, greške), pokreni **Whi
 Sva podešavanja su u fajlu `src\config.yaml` (otvori ga u Notepad-u). Najčešće izmene:
 
 ```yaml
-language: sr          # jezik diktiranja: sr, en, de, fr...
+language: sr          # jezik diktiranja: sr, en, de, fr... ili null = auto (prepoznaje sam)
 activation_key: mouse_middle, ctrl+alt+space   # ili f9...
 recording_mode: press_to_toggle   # ili hold_to_record (snima dok držiš taster)
 use_api: true         # true = preko interneta, false = samo lokalno

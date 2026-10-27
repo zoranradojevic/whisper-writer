@@ -6,7 +6,9 @@ Speech-to-text for Windows: press a shortcut, speak, and the text types itself i
 
 ## Install (~10 minutes, once)
 
-**Easiest:** GitHub → **Code** → **Download ZIP**, extract it, double-click **INSTALIRAJ.bat** and press Enter at each question (the installer speaks Serbian). The defaults are set up for Serbian — for another language change `language: sr` in `src\config.yaml` (e.g. `en`, `de`).
+**Easiest:** GitHub → **Code** → **Download ZIP**, extract it, double-click **INSTALIRAJ.bat** ("install"). It first asks for your dictation language (Serbian, English, German, auto-detect for mixed languages, or any other language code such as `fr`), then continues in English for non-Serbian languages. Press Enter for the default answers.
+
+**Fast online transcription (optional, free):** run **PODESI-KLJUCEVE.bat** ("set up keys") and paste free keys from ElevenLabs (main) and Groq (backup); the wizard explains where to get them and checks that they work. Text then arrives in ~2 s. Use your own keys — free hours are counted per key. Audio is sent to the service in this mode; without keys everything stays local.
 
 Manual install:
 

@@ -1,9 +1,9 @@
 @echo off
-rem Unos API kljuceva (ElevenLabs, Groq) za brzo prepoznavanje preko interneta.
-title WhisperWriter - API kljucevi
+rem Unos API kljuceva / API key setup (ElevenLabs, Groq).
+title WhisperWriter - API kljucevi / API keys
 cd /d "%~dp0"
 if not exist ".venv\Scripts\python.exe" (
-    echo Prvo pokreni INSTALIRAJ.bat.
+    echo Prvo pokreni / First run: INSTALIRAJ.bat
     pause
     exit /b 1
 )
