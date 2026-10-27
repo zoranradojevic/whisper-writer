@@ -1,3 +1,6 @@
+import csv
+import datetime
+import os
 import queue
 import threading
 import time
@@ -10,6 +13,7 @@ from PyQt5.QtCore import QThread, QMutex, pyqtSignal
 from collections import deque
 from threading import Event
 
+import transcription
 from transcription import transcribe_raw, post_process_transcription
 from utils import ConfigManager
 
@@ -23,6 +27,44 @@ CHUNK_PAUSE_MS = 300     # silence this long counts as a pause
 # The last recording is kept here (overwritten every time) for testing models on it.
 LAST_RECORDING_PATH = 'last_recording.wav'
 
+# One row per dictation: which service handled how many seconds, and how long the
+# user waited. Used to check free-tier usage (e.g. ElevenLabs hours per month).
+USAGE_STATS_PATH = 'usage_stats.csv'
+
+
+def _write_usage_stats(audio_seconds, wait_seconds, chunk_count, source_seconds):
+    try:
+        new_file = not os.path.exists(USAGE_STATS_PATH)
+        with open(USAGE_STATS_PATH, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            if new_file:
+                writer.writerow(['time', 'audio_s', 'wait_s', 'chunks', 'sources'])
+            sources = ' '.join(f'{name}:{sec:.1f}' for name, sec in source_seconds.items())
+            writer.writerow([datetime.datetime.now().isoformat(timespec='seconds'),
+                             f'{audio_seconds:.1f}', f'{wait_seconds:.1f}', chunk_count, sources])
+    except Exception as e:
+        ConfigManager.console_print(f'Could not write {USAGE_STATS_PATH}: {e}')
+
+
+def _join_chunks(texts):
+    """Join chunk texts. Cloud models capitalize every chunk, so a chunk that continues
+    an unfinished sentence gets a lowercase first letter. Not for "PDF"/"XPS", and not
+    for names: capitalized terms from corrections.yaml (_hotwords, _keyterms) stay."""
+    _, hotwords, keyterms = transcription._load_corrections()
+    names = {term.split()[0] for term in hotwords + keyterms if term[:1].isupper()}
+    joined = ''
+    for text in (t.strip() for t in texts):
+        if not text:
+            continue
+        continues_sentence = joined and joined[-1] not in '.!?…'
+        first_word = text.split()[0].strip('.,!?')
+        # "Da mu..." -> "da mu...", "I onda" -> "i onda"; "PDF" (all caps) stays.
+        looks_capitalized = text[0].isupper() and (len(first_word) == 1 or first_word[1:2].islower())
+        if continues_sentence and looks_capitalized and first_word not in names:
+            text = text[0].lower() + text[1:]
+        joined = f'{joined} {text}' if joined else text
+    return joined
+
 
 class ChunkTranscriber:
     """Transcribes audio chunks one after another on a background thread."""
@@ -33,6 +75,7 @@ class ChunkTranscriber:
         self.texts = []
         self.error = None
         self.chunk_count = 0
+        self.source_seconds = {}  # service -> seconds of audio it transcribed
         self.thread = threading.Thread(target=self._work, daemon=True)
         self.thread.start()
 
@@ -46,7 +89,7 @@ class ChunkTranscriber:
         self.thread.join()
         if self.error:
             raise self.error
-        return ' '.join(t.strip() for t in self.texts if t.strip())
+        return _join_chunks(self.texts)
 
     def cancel(self):
         self.queue.put(None)
@@ -61,6 +104,10 @@ class ChunkTranscriber:
             try:
                 previous_text = ' '.join(self.texts)
                 self.texts.append(transcribe_raw(audio_data, self.local_model, previous_text))
+                source = transcription.last_source or 'unknown'
+                sample_rate = ConfigManager.get_config_section('recording_options').get('sample_rate') or 16000
+                seconds = len(audio_data) / sample_rate
+                self.source_seconds[source] = self.source_seconds.get(source, 0) + seconds
             except Exception as e:
                 self.error = e
 
@@ -144,6 +191,8 @@ class ResultThread(QThread):
             end_time = time.time()
             if transcriber.chunk_count > 1:
                 ConfigManager.console_print(f'Transcribed in {transcriber.chunk_count} chunks while recording.')
+            _write_usage_stats(len(audio_data) / self.sample_rate, end_time - start_time,
+                               transcriber.chunk_count, transcriber.source_seconds)
 
             transcription_time = end_time - start_time
             audio_duration = len(audio_data) / self.sample_rate if self.sample_rate else 0

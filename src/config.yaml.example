@@ -8,9 +8,16 @@ misc:
   print_to_terminal: true
 model_options:
   api:
+    # Prepoznavanje preko interneta (kad je use_api: true): elevenlabs, groq ili openai.
+    # Ključevi idu u fajl .env: ELEVENLABS_API_KEY=..., GROQ_API_KEY=..., OPENAI_API_KEY=...
+    # Ako glavni servis ne radi (nema interneta, potrošen besplatni limit), proba se
+    # fallback_provider, pa lokalni model.
+    provider: elevenlabs
+    fallback_provider: groq
+    # Prazno = podrazumevani model servisa (elevenlabs: scribe_v2, groq: whisper-large-v3).
+    model: null
     api_key: null
     base_url: https://api.openai.com/v1
-    model: whisper-1
   common:
     # Kratak opis teme i retke reci koje ce se pojavljivati - model ih tada ređe greši.
     initial_prompt: 'Diktiram na srpskom, latinicom, sa pravilnim znakovima interpunkcije.'
@@ -26,6 +33,7 @@ model_options:
     vad_filter: true
     # 0 = koristi sva fizička jezgra procesora.
     cpu_threads: 0
+  # true = prepoznavanje preko interneta (brže: ~2 s), false = lokalno na računaru.
   use_api: false
 post_processing:
   add_trailing_space: true
@@ -34,6 +42,8 @@ post_processing:
   remove_trailing_period: false
   # Briše poštapalice (ovaj, znači, kako se zove, eee...) kad stoje same između zareza.
   remove_fillers: true
+  # Prebacuje ijekavicu u ekavicu (vježbe -> vežbe, dio -> deo, poslije -> posle).
+  ekavian: true
   writing_key_press_delay: 0.005
 recording_options:
   # Precica moze biti kombinacija tastera ('ctrl+shift+space', 'f9')

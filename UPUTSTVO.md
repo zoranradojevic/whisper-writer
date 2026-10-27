@@ -89,3 +89,18 @@ Detaljnije uputstvo (na engleskom, sa izborom modela, GPU podešavanjima itd.): 
 - Duže poruke se prepoznaju **dok pričaš** (deo po deo, na pauzama), pa posle puštanja dugmeta čekaš samo poslednji deo — oko 20 s za poruku od minut.
 - Poštapalice (ovaj, znači, kako se zove, eee...) se automatski brišu. Isključuje se u `src\config.yaml`: `remove_fillers: false`.
 - Poslednji snimak se uvek čuva u `last_recording.wav` (samo lokalno, prepisuje se svaki put) — korisno za testiranje modela.
+
+## Brže prepoznavanje preko interneta (opciono, besplatno)
+
+Umesto na tvom računaru, prepoznavanje može da radi na serveru: tekst stiže za **~2 sekunde** i tačniji je za srpski. Snimak tada odlazi na server (ElevenLabs/Groq).
+
+1. Napravi besplatan nalog na **elevenlabs.io** → levo dole **Developers** → **API Keys** → **Create Key**, kod *Speech to Text* izaberi **Access**. Kopiraj ključ (`sk_...`).
+2. (Rezerva) Napravi besplatan nalog na **console.groq.com** → **API Keys** → **Create API Key**. Kopiraj ključ (`gsk_...`).
+3. U folderu programa otvori fajl `.env` u Notepad-u i dodaj:
+   ```
+   ELEVENLABS_API_KEY=sk_...
+   GROQ_API_KEY=gsk_...
+   ```
+4. U `src\config.yaml` stavi `use_api: true` (pod `model_options`) i restartuj program.
+
+Besplatni planovi: ElevenLabs ~4,5 h snimka mesečno, posle toga automatski preuzima Groq, a bez interneta lokalni model. **Ne unosi karticu** ni na jednom sajtu i ništa ne može da se naplati. Statistika svakog diktiranja se upisuje u `usage_stats.csv`.

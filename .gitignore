@@ -137,3 +137,9 @@ whisperwriter.log
 last_recording.wav
 # Rezervne kopije pre prelaska na turbo model (lokalno)
 *.before-turbo.*
+# Snimci i testovi API servisa (lični glas)
+api-test/*.wav
+api-test/*.txt
+# Statistika korišćenja (lokalno)
+usage_stats.csv
+api-test/*.before-api

@@ -22,10 +22,26 @@ model_options:
 
   # Configuration options for the OpenAI API
   api:
-    model:
-      value: whisper-1
+    provider:
+      value: openai
       type: str
-      description: "The model to use for transcription. Currently only 'whisper-1' is available."
+      description: "Cloud service used when use_api is on. The key goes in .env: GROQ_API_KEY, OPENAI_API_KEY or ELEVENLABS_API_KEY. If the API fails (no internet, bad key), the local model is used."
+      options:
+        - groq
+        - openai
+        - elevenlabs
+    fallback_provider:
+      value: null
+      type: str
+      description: "Second cloud service, tried when the main one fails (e.g. free quota used up). After that the local model is used."
+      options:
+        - groq
+        - openai
+        - elevenlabs
+    model:
+      value: null
+      type: str
+      description: "Model name. Empty = provider default (groq: whisper-large-v3, openai: gpt-4o-transcribe, elevenlabs: scribe_v2)."
     base_url:
       value: https://api.openai.com/v1
       type: str
@@ -147,6 +163,10 @@ post_processing:
     value: false
     type: bool
     description: "Set to true to convert the transcribed text to lowercase."
+  ekavian:
+    value: false
+    type: bool
+    description: "Set to true to convert common ijekavian words to ekavian (vježbe -> vežbe, dio -> deo, poslije -> posle)."
   remove_fillers:
     value: false
     type: bool
