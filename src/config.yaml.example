@@ -50,12 +50,12 @@ recording_options:
   # ili taster misa: 'mouse_middle' (tockic), 'mouse_back', 'mouse_forward'.
   # Vise alternativnih precica se razdvaja zarezom, npr:
   #   activation_key: mouse_middle, ctrl+alt+space
-  activation_key: f9
+  activation_key: mouse_middle, ctrl+alt+space
   input_backend: auto
   min_duration: 100
   # hold_to_record = snima dok drzis taster; press_to_toggle = prvi pritisak
   # pokrece snimanje, drugi pritisak ga zaustavlja.
-  recording_mode: hold_to_record
+  recording_mode: press_to_toggle
   sample_rate: 16000
   silence_duration: 900
   sound_device: null

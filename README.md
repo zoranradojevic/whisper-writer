@@ -6,6 +6,10 @@ Speech-to-text for Windows: press a shortcut, speak, and the text types itself i
 
 ## Install (~10 minutes, once)
 
+**Easiest:** GitHub → **Code** → **Download ZIP**, extract it, double-click **INSTALIRAJ.bat** and press Enter at each question (the installer speaks Serbian). The defaults are set up for Serbian — for another language change `language: sr` in `src\config.yaml` (e.g. `en`, `de`).
+
+Manual install:
+
 **Step 1** — open PowerShell and install the tools (skip what you have):
 
 ```powershell
@@ -30,7 +34,7 @@ uv venv --python 3.11
 uv pip install -r requirements.txt
 ```
 
-**Step 4** — first run (downloads the speech model, ~500 MB, once):
+**Step 4** — copy `src\config.yaml.example` to `src\config.yaml` and `src\corrections.yaml.example` to `src\corrections.yaml`, then do the first run (downloads the speech model, ~1.6 GB, once):
 
 ```powershell
 .venv\Scripts\python.exe run.py
