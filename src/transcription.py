@@ -4,6 +4,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from tqdm import tqdm as _tqdm
 _tqdm.monitor_interval = 0
 import io
+import time
 import re
 import yaml
 import numpy as np
@@ -196,9 +197,16 @@ def _transcribe_elevenlabs(wav, base_url, api_key, model, language, keyterms):
         form.append(('language_code', language))
     # Keyterms cost +20% but are the only way to bias Scribe (it takes no prompt).
     form += [('keyterms', term) for term in keyterms[:100]]
-    response = requests.post(f'{base_url}/speech-to-text', headers={'xi-api-key': api_key},
-                             data=form, files={'file': ('audio.wav', wav, 'audio/wav')},
-                             timeout=_API_TIMEOUT_SECONDS)
+    for attempt in range(2):
+        response = requests.post(f'{base_url}/speech-to-text', headers={'xi-api-key': api_key},
+                                 data=form, files={'file': ('audio.wav', wav, 'audio/wav')},
+                                 timeout=_API_TIMEOUT_SECONDS)
+        # 429 on the free plan is a short "too many requests" burst limit, not a used-up
+        # quota: one retry after a second usually passes, before falling back to Groq.
+        if response.status_code != 429 or attempt:
+            break
+        ConfigManager.console_print('elevenlabs busy (429), retrying in 1 s...')
+        time.sleep(1)
     response.raise_for_status()
     return response.json().get('text', '')
 
@@ -238,13 +246,18 @@ def transcribe_api(audio_data, previous_text=None, provider=None):
 _FILLERS = r'(?:ovaj|ovaj ovaj|znači|kako se zove|kak se zove|kak zove|ono|e)'
 _FILLER_INSIDE = re.compile(r',\s*' + _FILLERS + r'(?=\s*[,.!?…])', re.IGNORECASE)
 _FILLER_START = re.compile(r'(^|[.!?…]\s+)' + _FILLERS + r'\s*,\s*(\w?)', re.IGNORECASE)
-_HESITATION = re.compile(r'\b(?:e{2,}|a{2,}|m{2,}|hm+|mhm|eh)\b[,.]?\s*', re.IGNORECASE)
+# uhm/umm/uh too: cloud models write English-style hesitations even in Serbian text.
+# A bare "um" stays: it is a Serbian word (mind).
+_HESITATIONS = r'(?:e{2,}|a{2,}|m{2,}|u+h+m+|u{2,}m+|um{2,}|uh+|hm+|mhm|eh)'
+_HESITATION_START = re.compile(r'(^|[.!?…]\s+)' + _HESITATIONS + r'\b[,.]?\s*(\w?)', re.IGNORECASE)
+_HESITATION = re.compile(r'\b' + _HESITATIONS + r'\b[,.]?\s*', re.IGNORECASE)
 
 
 def _remove_fillers(text):
     previous = None
     while previous != text:  # fillers can repeat: "ovaj, znači, ovaj,"
         previous = text
+        text = _HESITATION_START.sub(lambda m: m.group(1) + m.group(2).upper(), text)
         text = _HESITATION.sub('', text)
         text = _FILLER_INSIDE.sub('', text)
         # The word after a removed sentence-start filler now starts the sentence.
