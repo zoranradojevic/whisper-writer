@@ -8,6 +8,7 @@ import time
 import re
 import yaml
 import numpy as np
+import webrtcvad
 import soundfile as sf
 from faster_whisper import WhisperModel
 from openai import OpenAI, NOT_GIVEN
@@ -347,6 +348,10 @@ def transcribe_raw(audio_data, local_model=None, previous_text=None):
     """
     if audio_data is None or len(audio_data) == 0:
         return ''
+    audio_data = _trim_silence(audio_data)
+    if audio_data is None:
+        ConfigManager.console_print('No speech in this part; not transcribed.')
+        return ''
 
     global last_source
     if ConfigManager.get_config_value('model_options', 'use_api'):
@@ -354,13 +359,69 @@ def transcribe_raw(audio_data, local_model=None, previous_text=None):
             try:
                 text = transcribe_api(audio_data, previous_text, provider)
                 last_source = provider
-                return text
+                return _strip_hallucinations(text, provider)
             except Exception as e:
                 # No internet, bad key, free quota used up... dictation must still work.
                 ConfigManager.console_print(f'{provider} failed ({e}); trying the next option.')
         local_model = local_model or _fallback_local_model()
     last_source = 'local'
-    return transcribe_local(audio_data, local_model, previous_text)
+    return _strip_hallucinations(transcribe_local(audio_data, local_model, previous_text), 'local')
+
+
+# Whisper (Groq, local) invents a sentence from YouTube subtitles when it gets silence or
+# noise, typically at the end of the last chunk: "Hvala što pratite kanal.", "Hvala vam.",
+# "Top 10 najboljih kodavca na svetu." Silence is therefore cut off before sending, and
+# these known sentences are removed when they end a chunk.
+_VAD_FRAME_MS = 30
+_MIN_SPEECH_MS = 300      # less speech than this: nothing worth sending
+_SPEECH_PADDING_MS = 400  # silence kept around the speech so word edges are not cut
+_MIN_RUN_FRAMES = 5       # clicks and noise flash for a few frames; speech runs longer
+
+
+def _trim_silence(audio_data, sample_rate=16000):
+    """Cut leading and trailing silence; None when the audio holds (almost) no speech."""
+    if audio_data.dtype != np.int16:
+        return audio_data
+    frame = sample_rate * _VAD_FRAME_MS // 1000
+    vad = webrtcvad.Vad(2)
+    flags = [vad.is_speech(audio_data[i:i + frame].tobytes(), sample_rate)
+             for i in range(0, len(audio_data) - frame + 1, frame)]
+    # Keep only runs of consecutive speech frames long enough to be a voice.
+    speech = [False] * len(flags)
+    start = None
+    for i, flag in enumerate(flags + [False]):
+        if flag and start is None:
+            start = i
+        elif not flag and start is not None:
+            if i - start >= _MIN_RUN_FRAMES:
+                speech[start:i] = [True] * (i - start)
+            start = None
+    if sum(speech) * _VAD_FRAME_MS < _MIN_SPEECH_MS:
+        return None
+    pad = _SPEECH_PADDING_MS // _VAD_FRAME_MS
+    first = speech.index(True)
+    last = len(speech) - 1 - speech[::-1].index(True)
+    return audio_data[max(0, first - pad) * frame:min(len(audio_data), (last + 1 + pad) * frame)]
+
+
+_SENTENCE_END = r'(?:^|(?<=[.!?…])\s+)'
+_HALLUCINATION_ANY = re.compile(_SENTENCE_END + r'(?:'
+    r'Hvala (?:vam |ti )?(?:puno )?(?:što|na|za) (?:pratite|praćenju|gledanju|gledanje|pažnji)(?: kanal\w*)?'
+    r'|Top 10 najboljih \w+ na svetu'
+    r'|Pretplatite se\b[^.!?]*'
+    r')[.!]?\s*$', re.IGNORECASE)
+# A plain "Hvala vam." is only dropped from Whisper output: ElevenLabs does not invent it.
+_HALLUCINATION_WHISPER = re.compile(_SENTENCE_END + r'Hvala vam(?: puno)?[.!]?\s*$', re.IGNORECASE)
+
+
+def _strip_hallucinations(text, source):
+    previous = None
+    while previous != text:
+        previous = text
+        text = _HALLUCINATION_ANY.sub('', text)
+        if source != 'elevenlabs':
+            text = _HALLUCINATION_WHISPER.sub('', text)
+    return text
 
 
 # Which service transcribed the last chunk ('elevenlabs', 'groq', 'local'...), for stats.
